@@ -36,7 +36,7 @@ function loadDetail(plantId,revision){
   return new Promise((resolve,reject)=>{
     if(!Client.isConfigured())return reject(new Error('PHOTO_OFFLINE'));
     wx.request({
-      url:photoUrl(plantId,revision),responseType:'arraybuffer',timeout:12000,
+      url:photoUrl(plantId,revision),responseType:'arraybuffer',timeout:40000,
       success:res=>{
         if(res.statusCode!==200||!res.data||res.data.byteLength>3*1024*1024)return resolve('');
         const bytes=new Uint8Array(res.data);
