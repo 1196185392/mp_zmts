@@ -1,0 +1,23 @@
+<template name="growth-theater">
+<view class="page growth-page">
+  <view class="species-tabs"><button wx:for="{{growthSpecies}}" wx:key="id" class="species-tab {{growth.id===item.id?'selected':''}}" data-id="{{item.id}}" bindtap="changeGrowthPlant"><image src="{{item.image}}" mode="aspectFit"/><text>{{item.name}}</text></button></view>
+  <view class="storybook {{motionOn?'':'still'}}">
+    <view class="story-scene stage-{{growthIndex}} kind-{{growth.kind}}">
+      <view class="scene-grain"></view><view class="scene-sun"></view><view class="scene-cloud"></view>
+      <view class="scene-caption"><text>{{growth.chapter.short}}</text></view>
+      <view class="scene-horizon"></view>
+      <view class="scene-plant"><view wx:if="{{growthIndex===0 && growth.kind!=='flower'}}" class="scene-seed"></view><view wx:if="{{growthIndex===0 && growth.kind==='flower'}}" class="scene-cutting"><view></view><view></view></view><view wx:if="{{growthIndex>0}}" class="scene-stem"><view wx:for="{{growth.leaves}}" wx:key="id" class="scene-leaf leaf-{{item.side}}" style="bottom:{{item.bottom}}rpx;width:{{item.size}}rpx;height:{{item.size*0.62}}rpx;animation-delay:{{item.delay}}s"><view></view></view><view wx:for="{{growth.flowers}}" wx:key="x" class="scene-bloom" style="left:{{item.x}}%;top:{{item.y}}%"></view><view wx:for="{{growth.fruits}}" wx:key="x" class="scene-fruit" style="left:{{item.x}}%;top:{{item.y}}%"><view></view></view></view><view class="scene-pot"><view></view><text>朝暮田事</text></view><view wx:if="{{growthIndex>0}}" class="scene-roots"><view></view><view></view><view></view></view></view>
+      <view class="simulation-label">生长示意</view>
+    </view>
+    <view class="chapter-copy"><text>{{growth.chapter.copy}}</text></view>
+  </view>
+  <view class="growth-control"><button class="play-growth" bindtap="toggleGrowthPlay">{{growthPlaying?'暂停':growthIndex===4?'重新播放':'播放动画'}}</button><button class="motion-toggle" bindtap="toggleGrowthMotion">{{motionOn?'关闭场景动效':'开启场景动效'}}</button></view>
+  <slider min="0" max="4" step="1" value="{{growthIndex}}" activeColor="{{theme.primary}}" backgroundColor="{{theme.border}}" block-color="{{theme.primary}}" block-size="18" bindchanging="scrubGrowth" bindchange="scrubGrowth" aria-label="选择植物成长章节"/>
+  <view class="chapter-tabs"><button wx:for="{{growth.chapters}}" wx:key="name" class="{{growthIndex===index?'active':''}}" data-index="{{index}}" bindtap="selectGrowthStage"><text class="chapter-dot"></text><text>{{item.short}}</text></button></view>
+  <view class="observation-card"><view class="card-title">观察要点</view><view class="body-copy">{{growth.chapter.care}}</view></view>
+  <block wx:if="{{story.hasPlant}}">
+    <view class="section-head"><view class="section-title">我的种植记录</view></view>
+    <view class="my-land-story"><view class="personal-story-title">{{story.title}}</view><view class="story-evidence"><text>{{story.recordCount}} 条日记</text><text>{{story.photoCount}} 张照片</text></view><view wx:if="{{story.quote}}" class="story-quote">{{story.quote}}</view><button class="secondary" bindtap="recordFromGrowth">＋ 写日记</button></view>
+  </block>
+</view>
+</template>

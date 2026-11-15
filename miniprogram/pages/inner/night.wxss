@@ -1,0 +1,2 @@
+@import "../index/index.wxss";
+page { background-color: #1F2927; }

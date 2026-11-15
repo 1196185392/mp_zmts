@@ -1,0 +1,8 @@
+{
+  "name": "chaomu-tianshi-miniprogram",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "node scripts/test-mini.cjs && node scripts/theme-icons.cjs"
+  }
+}

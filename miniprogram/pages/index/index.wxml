@@ -1,0 +1,305 @@
+<import src="./growth.wxml"/>
+<wxs module="state" src="./state.wxs"/>
+<page-meta root-background-color="{{theme.background}}" background-color="{{theme.background}}" background-color-top="{{theme.background}}" background-color-bottom="{{theme.background}}" page-style="background:{{theme.background}};color:{{theme.text}};"/>
+<view class="app {{theme.dark?'night':''}}" style="{{themeStyle}}">
+  <view class="status-space" style="height:{{statusTop}}px"></view>
+  <view class="navigation" style="height:{{navHeight}}px">
+    <button wx:if="{{!isRoot}}" class="nav-back" bindtap="back" aria-label="返回"><image src="{{theme.dark?'/assets/nav-back-light.svg':'/assets/nav-back.svg'}}" mode="aspectFit"/></button>
+    <view wx:else class="brand-mark">田</view><text class="nav-title">{{title}}</text>
+  </view>
+  <scroll-view class="content" scroll-y="{{!sheet && !showGuide}}" scroll-top="{{scrollTop}}" enhanced show-scrollbar="{{false}}">
+    <!-- 发现 -->
+    <view wx:if="{{view==='home'}}" class="page home">
+      <view class="home-topline"><view class="hero-label"><text class="season-stamp">{{season}}</text><text>{{dateText}}</text></view><button class="theme-entry" bindtap="openTheme">主题配色</button></view>
+      <view class="hero">
+        <view wx:if="{{weatherEffect}}" class="hero-weather hero-weather-{{weatherEffect}}" aria-hidden="true">
+          <view wx:if="{{weatherEffect==='sunny'}}" class="hero-sun"></view>
+          <block wx:else><view class="hero-weather-particle" wx:for="{{[0,1,2,3,4,5,6,7,8,9]}}" wx:key="*this"></view></block>
+        </view>
+        <view class="hero-title">看植物怎么长</view>
+        <view class="hero-copy">小番茄、生菜和长寿花的生长动画。</view>
+        <view class="hero-fields" aria-hidden="true"><view class="terrace t1"></view><view class="terrace t2"></view><view class="terrace t3"></view><view class="terrace t4"></view></view>
+        <button class="hero-cta" bindtap="openGrowth">生长剧场 <text aria-hidden="true">›</text></button>
+      </view>
+      <view class="home-context {{plantingLocationEnabled?'':'home-context-single'}}">
+        <button class="context-card" data-sheet="environment" bindtap="openSettings"><text class="context-label">默认种植环境</text><view><text>{{environment}} · {{light}}</text><text class="context-arrow">›</text></view></button>
+        <button wx:if="{{plantingLocationEnabled}}" class="context-card" bindtap="openPlantingCity"><text class="context-label">种植地区</text><view><text>{{plantingCityName||(locatingPlantingRegion?'正在定位…':'选择省市区')}}</text><text class="context-arrow">›</text></view></button>
+      </view>
+      <view class="section-head"><view class="section-title">植物图鉴</view><button class="more home-more" data-view="catalog" bindtap="go">全部植物 <text aria-hidden="true">›</text></button></view>
+      <view class="home-plant-list">
+        <button class="home-plant-row" wx:for="{{recommended}}" wx:key="id" data-id="{{item.id}}" bindtap="openPlant">
+          <text class="home-plant-name">{{item.name}}</text><text class="home-plant-category">{{item.category}}</text><text class="home-plant-arrow" aria-hidden="true">›</text>
+        </button>
+      </view>
+
+    </view>
+    <view wx:elif="{{view==='growth'}}"><template is="growth-theater" data="{{growthSpecies:growthSpecies,growth:growth,growthIndex:growthIndex,growthPlaying:growthPlaying,motionOn:motionOn,story:story,theme:theme}}"/></view>
+    <!-- 植物目录 -->
+    <view wx:elif="{{view==='catalog'}}" class="page">
+      <view class="search"><text>⌕</text><input placeholder="搜索植物名称" value="{{query}}" bindinput="searchPlant" placeholder-class="placeholder"/></view>
+      <view class="catalog-filters"><button wx:for="{{categories}}" wx:key="*this" class="catalog-filter {{category===item?'active':''}}" data-value="{{item}}" bindtap="setCategory">{{item}}</button></view>
+      <view class="filter-caption">{{filteredPlants.length}} 种植物</view>
+      <view wx:if="{{filteredPlants.length}}" class="catalog-grid">
+        <button wx:for="{{filteredPlants}}" wx:key="id" class="catalog-card" data-id="{{item.id}}" bindtap="openPlant">
+          <image wx:if="{{photoOverrides[item.id] && !failedOverridePhotos[item.id]}}" class="catalog-photo" src="{{photoOverrides[item.id].url}}" mode="aspectFit" data-id="{{item.id}}" binderror="hideFailedOverridePhoto" catchtap="openCatalogZoom" aria-label="放大{{item.name}}照片"/>
+          <image wx:elif="{{item.image && !failedPlantPhotos[item.id]}}" class="catalog-photo" src="{{item.image}}" mode="aspectFit" data-id="{{item.id}}" binderror="hideFailedPlantPhoto" catchtap="openCatalogZoom" aria-label="放大{{item.name}}照片"/>
+          <view class="catalog-card-copy"><view class="catalog-card-bottom"><text>{{item.name}}</text><text>›</text></view><text class="plant-tag">{{item.category}}</text></view>
+        </button>
+      </view>
+      <view wx:else class="empty"><view class="empty-mark">⌕</view><view class="empty-title">还没找到这株植物</view><view class="empty-copy">试试「生菜」或「薄荷」，也可以切换分类。</view></view>
+    </view>
+    <!-- 植物图鉴 -->
+    <view wx:elif="{{view==='plant'}}" class="page plant-page">
+      <button wx:if="{{(photoOverrides[selectedPlant.id] && !failedOverridePhotos[selectedPlant.id]) || (selectedPlant.image && !failedPlantPhotos[selectedPlant.id])}}" class="plant-detail-photo-button" data-id="{{selectedPlant.id}}" bindtap="openCatalogZoom" aria-label="放大{{selectedPlant.name}}照片">
+        <image wx:if="{{photoOverrides[selectedPlant.id] && !failedOverridePhotos[selectedPlant.id]}}" class="plant-detail-photo" src="{{photoOverrides[selectedPlant.id].url}}" mode="aspectFit" data-id="{{selectedPlant.id}}" binderror="hideFailedOverridePhoto"/>
+        <image wx:else class="plant-detail-photo" src="{{selectedPlant.image}}" mode="aspectFit" data-id="{{selectedPlant.id}}" binderror="hideFailedPlantPhoto"/>
+        <text class="plant-detail-zoom-label">放大</text>
+      </button>
+      <view class="plant-title-row"><view class="plant-big-title">{{selectedPlant.name}}</view><text class="badge">{{selectedPlant.category}}</text></view>
+      <view wx:if="{{selectedPlant.en}}" class="plant-scientific-name">学名 <text>{{selectedPlant.en}}</text></view>
+      <view class="plant-data-status plant-photo-actions">
+        <text class="source-chip">{{selectedPlant.taxonomyStatus||'分类待复核'}}</text>
+        <button class="photo-correction-link" bindtap="openPhotoCorrection">{{photoOverrides[selectedPlant.id] || (selectedPlant.image && !failedPlantPhotos[selectedPlant.id])?'图片纠错':'补充照片'}} ›</button>
+      </view>
+      <view class="growth-entry" wx:if="{{selectedPlant.id==='tomato'||selectedPlant.id==='lettuce'||selectedPlant.id==='flower'}}"><button data-id="{{selectedPlant.id}}" bindtap="openGrowth">看{{selectedPlant.name}}的生长动画 ›</button></view>
+    </view>
+    <!-- 添加 -->
+    <view wx:elif="{{view==='add'}}" class="page">
+      <view class="selected-plant"><image wx:if="{{selectedPlant.image}}" src="{{selectedPlant.image}}" mode="aspectFit"/><view>{{selectedPlant.name}}</view><text class="badge">{{selectedPlant.category}}</text></view>
+      <view class="form-block"><text class="field-label">植物名称（必填）</text><input class="field" value="{{form.name}}" maxlength="30" data-field="name" bindinput="formInput" placeholder="例如：窗边的小番茄" placeholder-class="placeholder"/></view>
+      <view class="form-block"><text class="field-label">种植数量</text><input class="field" value="{{form.quantity}}" maxlength="30" data-field="quantity" bindinput="formInput" placeholder="例如：两盆、12棵、一个菜畦" placeholder-class="placeholder"/></view>
+      <view class="form-block"><text class="field-label">种植方式</text><view class="pills"><button wx:for="{{methods}}" wx:key="*this" class="pill {{form.method===item?'selected':''}}" data-field="method" data-value="{{item}}" bindtap="pickForm">{{item}}</button></view></view>
+      <view class="form-block"><text class="field-label">{{form.method==='移栽'?'移栽日期':'播种日期'}}</text><button class="field picker-field custom-picker" data-target="form" bindtap="openDate">{{form.date}}<text>▦</text></button></view>
+      <view class="form-block"><text class="field-label">来源</text><view class="pills wrap"><button wx:for="{{sources}}" wx:key="*this" disabled="{{form.method!=='移栽' && (item==='购买苗'||item==='扦插'||item==='分株')}}" class="pill {{form.source===item?'selected':''}}" data-field="source" data-value="{{item}}" bindtap="pickForm">{{item}}</button></view><text class="field-help">购买苗、扦插、分株，请选择移栽。</text></view>
+      <view class="form-block">
+        <text class="field-label">种植环境</text>
+        <view class="garden-environment-options">
+          <button wx:for="{{environments}}" wx:key="*this" class="garden-environment-option {{form.environment===item?'selected':''}}" data-field="environment" data-value="{{item}}" bindtap="pickForm">{{item}}</button>
+        </view>
+      </view>
+      <view class="form-block"><text class="field-label">种植位置</text><view class="pills wrap"><button wx:for="{{positions}}" wx:key="*this" class="pill {{form.position===item?'selected':''}}" data-field="position" data-value="{{item}}" bindtap="pickForm">{{item}}</button></view></view><view wx:if="{{formError}}" class="form-error">{{formError}}</view>
+    </view>
+    <!-- 我的田地 -->
+    <view wx:elif="{{view==='garden'}}" class="page">
+      <view class="row-between"><view class="section-title">种植环境</view><button class="round-button" aria-label="今日待办" data-view="reminders" bindtap="go">♧<text wx:if="{{pending}}" class="notification-dot"></text></button></view>
+      <view class="garden-environment-options garden-environment-filters">
+        <button class="garden-environment-option {{!gardenEnvironment?'selected':''}}" data-value="" bindtap="filterGardenEnvironment">全部环境</button>
+        <button wx:for="{{environments}}" wx:key="*this" class="garden-environment-option {{gardenEnvironment===item?'selected':''}}" data-value="{{item}}" bindtap="filterGardenEnvironment">{{item}}</button>
+      </view>
+      <view wx:if="{{plantCount}}" class="body-copy">{{inProgress}} 株在种 · {{gardenEndedCount}} 株已结束</view>
+      <view wx:if="{{inProgress || gardenEndedCount}}" class="tabs garden-tabs"><button wx:for="{{gardenTabs}}" wx:key="*this" class="tab {{gardenTab===item?'active':''}}" data-value="{{item}}" bindtap="gardenTab">{{item==='全部'?'全部状态':item}}</button></view>
+      <view wx:if="{{garden.length}}">
+        <view wx:for="{{garden}}" wx:key="id" class="garden-card">
+          <view class="garden-card-top" data-id="{{item.id}}" bindtap="openGarden">
+            <view wx:if="{{item.image}}" class="garden-art"><image src="{{item.image}}" mode="aspectFit"/></view>
+            <view class="garden-card-content">
+              <view class="garden-name">{{item.name}}<text>↗</text></view>
+              <view class="garden-plant-meta">{{item.environment}} · {{item.quantity ? item.quantity+' · ' : ''}}{{item.position}}</view>
+              <block wx:if="{{item.hasCultivation}}">
+                <view class="progress-label"><text>{{item.ended?'已结束':'已种植 '+item.age+' 天'}}</text><text>{{item.progress}}%</text></view>
+                <view class="progress"><view style="width:{{item.progress}}%"></view></view>
+              </block>
+              <view wx:else class="garden-plant-meta">{{item.ended?'已结束':'已种植 '+item.age+' 天'}}</view>
+            </view>
+          </view>
+          <view class="garden-card-footer"><text>{{item.records}} 条生长记录</text><button data-id="{{item.id}}" bindtap="startRecord">＋ 记一笔</button></view>
+        </view>
+      </view>
+      <view wx:else class="empty">
+        <view class="empty-garden"><view class="empty-leaf l1"></view><view class="empty-leaf l2"></view><view class="empty-stem"></view><view class="empty-pot"></view></view>
+        <view class="empty-title">{{inProgress || gardenEndedCount ? (gardenTab==='已结束'?'还没有已结束的植物':'还没有在种的植物') : (gardenEnvironment ? gardenEnvironment+'还没有植物' : '还没有植物')}}</view>
+        <button wx:if="{{inProgress || gardenEndedCount}}" class="secondary compact" data-value="全部" bindtap="gardenTab">查看全部状态</button>
+        <button wx:else class="primary compact" bindtap="openGardenCatalog">＋ 添加植物</button>
+      </view>
+      <button wx:if="{{inProgress || gardenEndedCount}}" class="outline-add" bindtap="openGardenCatalog">＋ 添加植物</button>
+    </view>
+    <!-- 档案 -->
+    <view wx:elif="{{view==='detail' && selectedGarden}}" class="page"><view class="detail-hero {{selectedGarden.image?'has-photo':'text-only'}}"><image wx:if="{{selectedGarden.image}}" src="{{selectedGarden.image}}" mode="aspectFit"/><text class="badge">{{selectedGarden.ended?'已结束':'生长中'}}</text></view><view class="page-heading">{{selectedGarden.name}}</view><view class="body-copy">{{selectedGarden.date}} 种植 · {{selectedGarden.age}} 天</view><view class="card"><view class="card-title">种植信息</view>
+      <button class="menu-row garden-environment-edit" bindtap="openGardenEnvironment"><text>种植环境</text><text>{{selectedGarden.environment}} ›</text></button><view class="detail-row"><text>种植方式</text><text>{{selectedGarden.method}}</text></view><view class="detail-row"><text>数量 / 位置</text><text>{{selectedGarden.quantity||'未填写'}} / {{selectedGarden.position}}</text></view><view class="detail-row"><text>来源</text><text>{{selectedGarden.source}}</text></view><button class="menu-row" data-id="{{selectedGarden.plantId}}" bindtap="openPlant">查看植物图鉴<text>↗</text></button></view><view class="section-title">记录养护</view><view class="action-grid"><button wx:for="{{actions}}" wx:key="*this" data-id="{{selectedGarden.id}}" data-action="{{item}}" bindtap="startRecord">{{item}}</button></view><view class="section-head"><view class="section-title">生长记录</view><button class="more" data-view="notes" bindtap="go">全部 ↗</button></view><view wx:if="{{!gardenNotes.length}}" class="empty-small">还没有生长记录</view><view wx:for="{{gardenNotes}}" wx:key="id" class="note-card"><view class="note-date">{{item.day}} · {{item.plantName}}</view><view class="tags"><text wx:for="{{item.actions}}" wx:for-item="act" wx:key="*this" class="badge">{{act}}</text></view><view class="note-content">{{item.content}}</view><view class="note-photos"><image wx:for="{{item.photos}}" wx:for-item="photo" wx:key="*this" src="{{photo}}" mode="aspectFill" data-src="{{photo}}" data-urls="{{item.photos}}" bindtap="previewPhoto"/></view></view><button class="secondary" bindtap="finishPlant">{{selectedGarden.ended?'重新开始这一轮种植':'结束本轮种植'}}</button><button class="text-danger" bindtap="deletePlant">移除这株植物</button></view>
+    <!-- 养护记录 -->
+    <view wx:elif="{{view==='record'}}" class="page"><view class="form-block"><text class="field-label">选择植物</text><button class="field picker-field custom-picker" bindtap="openRecordPlant">{{plantOptions[recordPlantIndex]}}<text>⌄</text></button></view><view class="card"><view class="card-title">养护事项</view><view class="action-pills"><button wx:for="{{recordActions}}" wx:key="*this" class="pill {{state.includes(record.actions,item)?'selected':''}}" data-value="{{item}}" bindtap="toggleAction">{{item}}</button></view></view><view class="card"><view class="card-title">文字与照片</view><view class="photo-grid"><view wx:for="{{record.photos}}" wx:key="*this" class="photo-wrap"><image src="{{item}}" mode="aspectFill"/><button class="remove-photo" data-index="{{index}}" bindtap="removePhoto">×</button></view><button wx:if="{{record.photos.length<3}}" class="photo-add" bindtap="choosePhoto"><text>＋</text><text>添加照片</text></button></view><textarea class="note-input" maxlength="1000" value="{{record.content}}" data-field="content" bindinput="recordInput" placeholder="记录今天的变化" placeholder-class="placeholder" auto-height/><view class="char-count">{{record.content.length}} / 1000</view></view><view class="form-block"><text class="field-label">记录日期</text><button class="field picker-field custom-picker" data-target="record" bindtap="openDate">{{record.date}}<text>▦</text></button></view><view wx:if="{{formError}}" class="form-error">{{formError}}</view></view>
+    <!-- 日记 -->
+    <view wx:elif="{{view==='notes'}}" class="page"><view class="search"><text>⌕</text><input placeholder="搜索笔记、植物或养护动作" value="{{noteQuery}}" bindinput="searchNotes" placeholder-class="placeholder"/></view><view wx:if="{{notes.length}}"><view wx:for="{{notes}}" wx:key="id" class="note-card"><view class="note-date">{{item.day}}<text>{{item.plantName}}</text></view><view class="tags"><text wx:for="{{item.actions}}" wx:for-item="act" wx:key="*this" class="badge">{{act}}</text></view><view wx:if="{{item.content}}" class="note-content">{{item.content}}</view><view class="note-photos"><image wx:for="{{item.photos}}" wx:for-item="photo" wx:key="*this" src="{{photo}}" mode="aspectFill" data-src="{{photo}}" data-urls="{{item.photos}}" bindtap="previewPhoto"/></view><button class="delete-link" data-id="{{item.id}}" bindtap="deleteNote">删除</button></view></view><view wx:else class="empty"><view class="empty-mark">▤</view><view class="empty-title">{{noteQuery?'没有找到相关记录':'还没有日记'}}</view><view class="empty-copy">{{noteQuery?'换一个词，再找找看。':'点下方「写日记」添加第一条。'}}</view></view></view>
+    <!-- 书房 -->
+    <view wx:elif="{{view==='learn'}}" class="page"><button class="library-banner" data-view="catalog" bindtap="go"><text>▤</text><view><view>植物图鉴</view><text>按名称和分类查找</text></view><text>↗</text></button><view class="section-head"><view class="section-title">种植小词典</view></view><view class="glossary-list"><view wx:for="{{terms}}" wx:key="id" class="card glossary-entry"><view class="card-title">{{item.name}}</view><view class="body-copy">{{item.body}}</view></view></view></view>
+    <!-- 日历 -->
+    <view wx:elif="{{view==='auth'}}" class="page"><view class="card auth-card"><view class="card-title">管理员验证</view><button class="primary" bindtap="beginLogin">微信一键登录</button></view></view>
+    <!-- 用户反馈与管理员收件箱 -->
+    <view wx:elif="{{view==='feedback'}}" class="page feedback-page"><view wx:if="{{feedbackDone}}" class="feedback-success"><view class="feedback-success-icon">✓</view><view class="card-title">已收到，谢谢你。</view><button class="primary" data-view="profile" bindtap="go">返回我的页面</button><button class="secondary" bindtap="resetFeedback">再写一条</button></view><view wx:else><view class="feedback-types"><button class="feedback-type {{feedback.category==='suggestion'?'selected':''}}" data-category="suggestion" bindtap="chooseFeedbackCategory"><text>✦</text><view>功能建议<text>想增加什么</text></view></button><button class="feedback-type {{feedback.category==='bug'?'selected':''}}" data-category="bug" bindtap="chooseFeedbackCategory"><text>◇</text><view>问题反馈<text>哪里不顺手</text></view></button><button class="feedback-type {{feedback.category==='content'?'selected':''}}" data-category="content" bindtap="chooseFeedbackCategory"><text>▤</text><view>内容纠错<text>植物资料问题</text></view></button><button class="feedback-type {{feedback.category==='other'?'selected':''}}" data-category="other" bindtap="chooseFeedbackCategory"><text>◌</text><view>其他<text>随时告诉我们</text></view></button></view><view class="form-block"><text class="field-label">反馈内容</text><textarea class="feedback-textarea" maxlength="1000" value="{{feedback.content}}" data-field="content" bindinput="feedbackInput" placeholder="例如：希望能记录每次浇水后的照片，比较植物的变化……" placeholder-class="placeholder" auto-height/><view class="char-count">{{feedback.content.length}} / 1000</view></view><view class="form-block"><text class="field-label">联系方式（选填）</text><input class="field" maxlength="100" value="{{feedback.contact}}" data-field="contact" bindinput="feedbackInput" placeholder="邮箱或其他方便联系的方式" placeholder-class="placeholder"/><text class="field-help">只用于联系你核实这条反馈，不会公开显示。</text></view><view wx:if="{{formError}}" class="form-error">{{formError}}</view><button class="primary feedback-submit" disabled="{{feedbackSending}}" bindtap="submitFeedback">{{feedbackSending?'提交中…':'提交反馈'}}</button></view></view>
+    <view wx:elif="{{view==='feedbackAdmin'}}" class="page feedback-admin-page"><view wx:if="{{!isAdmin}}" class="card"><view class="card-title">需要管理员账号</view><view class="body-copy">请先使用已配置的管理员微信账号登录。</view><button class="secondary" data-view="auth" bindtap="go">去登录</button></view><view wx:else><button class="secondary correction-inbox-entry" bindtap="openPhotoCorrections">图鉴照片纠错 ›</button><view class="feedback-filter"><button class="pill {{feedbackFilter==='open'?'selected':''}}" data-status="open" bindtap="filterFeedback">待处理</button><button class="pill {{feedbackFilter==='reviewing'?'selected':''}}" data-status="reviewing" bindtap="filterFeedback">跟进中</button><button class="pill {{feedbackFilter==='closed'?'selected':''}}" data-status="closed" bindtap="filterFeedback">已完成</button><button class="pill {{feedbackFilter==='all'?'selected':''}}" data-status="all" bindtap="filterFeedback">全部</button></view><view wx:if="{{feedbackAdminError}}" class="form-error">{{feedbackAdminError}}</view><view wx:if="{{!feedbackItems.length}}" class="empty-small">这里暂时没有反馈。</view><view wx:for="{{feedbackItems}}" wx:key="id" class="feedback-inbox-card"><view class="feedback-inbox-head"><text>{{item.category==='bug'?'问题反馈':item.category==='content'?'内容纠错':item.category==='other'?'其他':'功能建议'}}</text><text>{{item.createdAt}}</text></view><view class="feedback-inbox-content">{{item.content}}</view><text wx:if="{{item.contact}}" class="feedback-inbox-contact">联系：{{item.contact}}</text><view class="feedback-inbox-actions"><text>{{item.status==='open'?'待处理':item.status==='reviewing'?'跟进中':'已完成'}}</text><button wx:if="{{item.status==='open'}}" data-id="{{item.id}}" data-status="reviewing" bindtap="updateFeedbackStatus">开始跟进</button><button wx:if="{{item.status!=='closed'}}" data-id="{{item.id}}" data-status="closed" bindtap="updateFeedbackStatus">标记完成</button></view></view></view></view>
+    <view wx:elif="{{view==='photoCorrections'}}" class="page feedback-admin-page">
+      <block wx:if="{{isAdmin}}">
+        <view class="feedback-filter">
+          <button wx:for="{{['pending','reviewed','rejected']}}" wx:key="*this" class="pill {{correctionFilter===item?'selected':''}}" data-status="{{item}}" bindtap="filterPhotoCorrections">{{item==='pending'?'待审核':item==='reviewed'?'已核对':'未采纳'}}</button>
+        </view>
+        <view wx:if="{{correctionInboxError}}" class="form-error">{{correctionInboxError}} <button class="more" bindtap="loadPhotoCorrections">重试</button></view>
+        <view wx:elif="{{correctionInboxLoading}}" class="empty-small">正在读取纠错记录…</view>
+        <view wx:elif="{{!photoCorrectionItems.length}}" class="empty-small">暂无照片纠错</view>
+        <view wx:for="{{photoCorrectionItems}}" wx:key="id" class="feedback-inbox-card">
+          <view class="feedback-inbox-head"><text>{{item.plantName}}</text><text>{{item.createdAt}}</text></view>
+          <view wx:if="{{item.scientificName}}" class="body-copy">{{item.scientificName}}</view>
+          <view wx:if="{{item.note}}" class="feedback-inbox-content">{{item.note}}</view>
+          <view class="feedback-inbox-actions">
+            <button data-id="{{item.id}}" bindtap="viewCorrectionPhoto">查看照片</button>
+            <button wx:if="{{item.status==='pending'}}" disabled="{{correctionReviewing}}" data-id="{{item.id}}" data-status="reviewed" bindtap="updatePhotoCorrection">标记已核对</button>
+            <button wx:if="{{item.status==='pending'}}" disabled="{{correctionReviewing}}" data-id="{{item.id}}" data-status="rejected" bindtap="updatePhotoCorrection">不采纳</button>
+          </view>
+        </view>
+      </block>
+      <view wx:else class="empty-small">请先登录管理员账号。</view>
+    </view>
+    <!-- 我的 -->
+    <view wx:elif="{{view==='profile'}}" class="page"><view class="profile-intro"><view class="profile-avatar">田</view><view class="profile-greeting">我的种植记录</view></view><view class="stat-card profile-stats"><view><text class="stat-number">{{plantCount}}</text><text class="stat-label">种过的植物</text></view><view><text class="stat-number">{{noteCount}}</text><text class="stat-label">田间日记</text></view><view><text class="stat-number">{{endedCount}}</text><text class="stat-label">完成的种植</text></view></view><button class="theme-promo" bindtap="openTheme"><view><view class="card-title">主题配色</view><text class="body-copy">当前：{{themeName}}</text></view><view class="palette-mini"><view style="background:{{theme.primary}}"></view><view style="background:{{theme.accent}}"></view><view style="background:{{theme.background}}"></view></view><text>↗</text></button><view class="card menu-card"><button class="menu-row" data-view="notes" bindtap="go">田间日记<text>↗</text></button><button class="menu-row" data-view="reminders" bindtap="go">今日待办<text>↗</text></button><button class="menu-row" data-view="learn" bindtap="go">种植书房<text>↗</text></button><button class="menu-row" bindtap="replayGuide">再看一次新手引导<text>↗</text></button><button class="menu-row" data-view="feedback" bindtap="go">意见反馈<text>↗</text></button><button wx:if="{{isAdmin}}" class="menu-row" data-view="feedbackAdmin" bindtap="go">反馈收件箱<text>↗</text></button><button class="menu-row" data-view="about" bindtap="go">关于朝暮田事<text>↗</text></button></view></view>
+    <view wx:elif="{{view==='about'}}" class="page about-page">
+      <view class="about-intro">
+        <view class="about-mark">田</view>
+        <view class="about-name">朝暮田事</view>
+        <text class="about-description">查植物，记下播种、养护和采收。</text>
+      </view>
+      <view class="about-details">
+        <view class="about-detail">
+          <view class="card-title">认识与记录</view>
+          <text class="body-copy">在图鉴里查找植物，在田地里记录播种、养护和采收，也可以给日记配上照片。</text>
+        </view>
+        <view class="about-detail">
+          <view class="card-title">数据保存在这台设备</view>
+          <text class="body-copy">田地、日记和配色保存在本机。图鉴和种植记录断网也能使用。</text>
+        </view>
+      </view>
+    </view>
+    <!-- 主题工作台 -->
+    <view wx:elif="{{view==='theme'}}" class="page theme-page"><view class="theme-preview"><view class="row-between"><text class="preview-label">{{themeDraft.name}}</text><text class="badge">实时预览</text></view><view class="preview-plant"><image src="/assets/lettuce.svg" mode="aspectFit"/><view><view>生菜</view><text>已种植 7 天</text></view><text class="preview-dot">●</text></view><view class="preview-button">记一笔 ＋</view></view><view class="section-head"><view class="section-title">预设配色</view><button class="more" bindtap="resetTheme">恢复默认</button></view><view class="preset-grid"><button wx:for="{{presets}}" wx:key="id" class="preset {{themeDraft.id===item.id?'chosen':''}}" aria-label="{{item.name}}{{themeDraft.id===item.id?'，已选中':''}}" data-id="{{item.id}}" bindtap="choosePreset"><view class="preset-art" style="background:{{item.background}}"><view class="preset-stripe" style="background:{{item.primary}}"></view><view class="preset-circle" style="background:{{item.accent}}"></view><view class="preset-line" style="background:{{item.primary}}"></view></view><view class="preset-name">{{item.name}}<text wx:if="{{themeDraft.id===item.id}}">✓</text></view></button></view><view class="section-head"><view><view class="section-title">自定义配色</view></view></view><view class="colour-section"><view class="colour-label"><text>主色</text></view><view class="swatch-row"><button wx:for="{{tones}}" wx:key="value" class="swatch {{themeDraft.primary===item.value?'picked':''}}" data-field="primary" data-value="{{item.value}}" bindtap="chooseColor" aria-label="{{item.name}}"><view style="background:{{item.value}}"></view></button></view></view><view class="colour-section"><view class="colour-label"><text>背景色</text></view><view class="swatch-row"><button wx:for="{{backgrounds}}" wx:key="value" class="swatch {{themeDraft.background===item.value?'picked':''}}" data-field="background" data-value="{{item.value}}" bindtap="chooseColor" aria-label="{{item.name}}"><view style="background:{{item.value}}"></view></button></view></view><view class="colour-section"><view class="colour-label"><text>点缀色</text></view><view class="swatch-row"><button wx:for="{{accents}}" wx:key="value" class="swatch {{themeDraft.accent===item.value?'picked':''}}" data-field="accent" data-value="{{item.value}}" bindtap="chooseColor" aria-label="{{item.name}}"><view style="background:{{item.value}}"></view></button></view></view><button class="random-button" bindtap="randomTheme">随机配色</button></view>
+    <!-- 提醒 -->
+    <view wx:elif="{{view==='reminders'}}" class="page todo-page">
+      <block wx:if="{{todos.length}}">
+        <view class="todo-overview">
+          <view class="todo-overview-top">
+            <view class="todo-overview-title">日常观察</view>
+            <text class="todo-date">{{dateText}}</text>
+          </view>
+          <view class="todo-progress-line">
+            <view><text class="todo-progress-count">{{todoCompletedCount}}</text><text class="todo-progress-total"> / {{todos.length}} 项已完成</text></view>
+            <text class="todo-progress-status">{{pending?'还剩 '+pending+' 项':'今天已全部完成'}}</text>
+          </view>
+          <view class="todo-progress-track" aria-hidden="true"><view class="todo-progress-fill" style="width:{{todoProgress}}%"></view></view>
+          <view class="todo-overview-copy">看看叶片和土壤，需要时再养护。</view>
+        </view>
+
+        <block wx:for="{{todoGroups}}" wx:for-item="group" wx:key="label">
+          <view wx:if="{{group.items.length}}" class="todo-group">
+            <view class="todo-group-title">{{group.label}} <text>{{group.items.length}}</text></view>
+            <view class="todo-list">
+              <view wx:for="{{group.items}}" wx:for-item="task" wx:key="id" class="todo-row {{task.done?'todo-done':''}}">
+                <button class="todo-toggle" data-id="{{task.id}}" bindtap="toggleTodo" aria-label="{{task.name}}{{task.done?'，撤销完成':'，标记完成'}}">
+                  <view class="todo-checkmark" aria-hidden="true">{{task.done?'✓':''}}</view>
+                  <view class="todo-task-copy">
+                    <view class="todo-task-name">{{task.name}}</view>
+                    <view wx:if="{{task.place}}" class="todo-task-place">{{task.place}}</view>
+                  </view>
+                </button>
+                <button class="todo-record" data-id="{{task.gardenId}}" bindtap="startRecord">记一笔</button>
+              </view>
+            </view>
+          </view>
+        </block>
+      </block>
+      <view wx:else class="todo-empty">
+        <view class="todo-empty-art" aria-hidden="true"><image src="{{theme.dark?'/assets/nav-garden-light.svg':'/assets/nav-garden.svg'}}" mode="aspectFit"/></view>
+        <view class="todo-empty-title">今天没有观察待办</view>
+        <view class="todo-overview-copy">添加在种的植物后，这里会列出每天的观察待办。</view>
+        <button class="primary compact" data-view="catalog" bindtap="go">添加植物</button>
+      </view>
+    </view>
+    <view wx:elif="{{view==='term'}}" class="page"><block wx:if="{{term}}"><view class="term-heading">{{term.name}}</view><text class="badge">{{term.tag}}</text><view class="card term-body"><view class="card-title">它是什么意思？</view><view class="body-copy">{{term.body}}</view></view></block><view wx:else class="empty-small">没有找到这个词，请返回小词典重新选择。</view></view>
+    <view class="scroll-safe"></view>
+  </scroll-view>
+  <!-- 底部操作 -->
+  <view wx:if="{{isRoot}}" class="tabbar five-tabbar"><button class="tab-item {{view==='home'?'current':''}}" data-view="home" bindtap="switchTab" aria-label="发现"><view class="tab-icon-wrap"><image class="tab-icon" src="{{theme.dark?'/assets/nav-home-light.svg':'/assets/nav-home.svg'}}" mode="aspectFit"/></view><text class="tab-label">发现</text></button><button class="tab-item {{view==='garden'?'current':''}}" data-view="garden" bindtap="switchTab" aria-label="田地"><view class="tab-icon-wrap"><image class="tab-icon" src="{{theme.dark?'/assets/nav-garden-light.svg':'/assets/nav-garden.svg'}}" mode="aspectFit"/></view><text class="tab-label">田地</text></button><button class="tab-add {{sheet==='quick'?'open':''}}" bindtap="openQuick" aria-label="记一笔"><view class="tab-add-mark"><text>＋</text></view><text class="tab-label">记一笔</text></button><button class="tab-item {{view==='learn'?'current':''}}" data-view="learn" bindtap="switchTab" aria-label="书房"><view class="tab-icon-wrap"><image class="tab-icon" src="{{theme.dark?'/assets/nav-book-light.svg':'/assets/nav-book.svg'}}" mode="aspectFit"/></view><text class="tab-label">书房</text></button><button class="tab-item {{view==='profile'?'current':''}}" data-view="profile" bindtap="switchTab" aria-label="我的"><view class="tab-icon-wrap"><image class="tab-icon" src="{{theme.dark?'/assets/nav-me-light.svg':'/assets/nav-me.svg'}}" mode="aspectFit"/></view><text class="tab-label">我的</text></button></view>
+  <view wx:if="{{showGuide}}" class="guide-mask" catchtap="finishGuide"><view class="guide-card" catchtap="stop"><view class="guide-count">{{guideStep+1}} / 3</view><view wx:if="{{guideStep===0}}" class="guide-title">添加第一株植物</view><view wx:elif="{{guideStep===1}}" class="guide-title">写一条生长日记</view><view wx:else class="guide-title">查看种植记录</view><view wx:if="{{guideStep===0}}" class="guide-copy">在植物图鉴里找到你种的植物，点「添加到田地」。</view><view wx:elif="{{guideStep===1}}" class="guide-copy">点底栏「记一笔」，就能记录浇水、长出新叶等变化，也可以加照片。</view><view wx:else class="guide-copy">在「田地」查看每株植物，在「书房」查植物和种植词汇。</view><view class="guide-actions"><button class="guide-skip" catchtap="finishGuide">跳过</button><button class="guide-next" catchtap="nextGuide">{{guideStep===2?'开始使用':'下一步'}} <text>→</text></button></view></view></view>
+  <view wx:elif="{{view==='plant'||view==='add'||view==='record'||view==='notes'||view==='detail'||view==='theme'||view==='growth'}}" class="action-footer"><button wx:if="{{view==='plant'}}" class="primary" bindtap="addPlant">添加到田地</button><button wx:elif="{{view==='add'}}" class="primary" bindtap="savePlant">保存到我的田地</button><button wx:elif="{{view==='record'}}" class="primary" bindtap="saveRecord">保存日记</button><button wx:elif="{{view==='notes'}}" class="primary" bindtap="startRecord">＋ 写日记</button><button wx:elif="{{view==='detail'}}" class="primary" data-id="{{selectedGarden.id}}" bindtap="startRecord">＋ 记录养护</button><button wx:elif="{{view==='growth'}}" class="primary" bindtap="plantFromGrowth">添加到田地</button><button wx:elif="{{view==='theme'}}" class="primary theme-save" bindtap="saveTheme">保存配色</button></view>
+  <!-- 全局弹层 -->
+  <view wx:if="{{sheet==='catalogZoom'}}" class="catalog-zoom-layer" aria-role="dialog" style="padding-top:{{statusTop+navHeight}}px">
+    <view class="catalog-zoom-header"><text>{{catalogZoomTitle}}</text><button bindtap="closeSheet" aria-label="退出照片放大">×</button></view>
+    <movable-area wx:if="{{catalogZoomSource}}" class="catalog-zoom-stage" scale-area>
+      <movable-view class="catalog-zoom-movable" direction="all" scale scale-min="1" scale-max="4" bindscale="noteCatalogZoomGesture" bindchange="noteCatalogZoomMove" bindtap="tapCatalogZoom">
+        <image class="catalog-zoom-photo" src="{{catalogZoomSource}}" mode="aspectFit" binderror="restoreCatalogZoomFallback"/>
+      </movable-view>
+    </movable-area>
+    <view wx:else class="catalog-zoom-unavailable">{{catalogZoomLoading?'正在加载照片…':'照片暂时无法加载'}}</view>
+    <text class="catalog-zoom-help">{{catalogZoomLoading?'正在加载高清图…':'双指缩放 · 轻点退出'}}</text>
+  </view>
+  <view wx:elif="{{sheet && (sheet!=='plantingCity' || plantingLocationEnabled)}}" class="sheet-mask" bindtap="closeSheet">
+    <view class="sheet" catchtap="stop" aria-role="dialog">
+      <view class="sheet-handle"></view>
+      <view class="sheet-title">
+        <text>{{sheet==='confirm'?confirmation.title:sheet==='photoCorrection'?'图鉴照片纠错':sheet==='photoSource'?'添加照片':sheet==='photoPreview'?'照片':sheet==='plantingCity'?'种植地区':sheet==='quick'?'记一笔':sheet==='gardenEnvironment'?'更改种植环境':sheet==='environment'?'默认种植环境':sheet==='recordPlant'?'选择植物':sheet==='date'?'选择日期':sheet==='discardRecord'||sheet==='discardPlant'?'放弃编辑？':'选择节气'}}</text>
+        <button bindtap="closeSheet" aria-label="关闭">×</button>
+      </view>
+      <view wx:if="{{sheet==='quick'}}"><view class="quick-top"><button data-view="catalog" bindtap="go"><text>♧</text>添加一株植物</button><button bindtap="startRecord"><text>▤</text>拍照 · 写日记</button></view><view class="action-grid"><button wx:for="{{actions}}" wx:key="*this" data-action="{{item}}" bindtap="startRecord">{{item}}</button></view></view>
+      <view wx:elif="{{sheet==='plantingCity'}}">
+        <text wx:if="{{plantingLocationHint}}" class="body-copy planting-region-copy">{{plantingLocationHint}}</text>
+        <view class="region-columns">
+          <view class="region-column">
+            <text class="region-column-title">省份</text>
+            <scroll-view scroll-y class="region-scroll">
+              <button wx:for="{{regionDraft.provinces}}" wx:key="*this" class="region-option {{regionDraft.province===item?'selected':''}}" data-level="province" data-value="{{item}}" bindtap="chooseRegionPart">{{item}}</button>
+            </scroll-view>
+          </view>
+          <view class="region-column">
+            <text class="region-column-title">城市</text>
+            <scroll-view scroll-y class="region-scroll" wx:if="{{regionDraft.cities.length}}">
+              <button wx:for="{{regionDraft.cities}}" wx:key="*this" class="region-option {{regionDraft.city===item?'selected':''}}" data-level="city" data-value="{{item}}" bindtap="chooseRegionPart">{{item}}</button>
+            </scroll-view>
+            <view wx:else class="region-empty">先选省份</view>
+          </view>
+          <view class="region-column">
+            <text class="region-column-title">区县</text>
+            <scroll-view scroll-y class="region-scroll" wx:if="{{regionDraft.districts.length}}">
+              <button wx:for="{{regionDraft.districts}}" wx:key="*this" class="region-option {{regionDraft.district===item?'selected':''}}" data-level="district" data-value="{{item}}" bindtap="chooseRegionPart">{{item}}</button>
+            </scroll-view>
+            <view wx:else class="region-empty">先选城市</view>
+          </view>
+        </view>
+        <button class="primary sheet-confirm {{regionDraft.district?'':'sheet-disabled'}}" bindtap="savePlantingRegion" disabled="{{!regionDraft.district}}">确认地区</button>
+        <button wx:if="{{canLocatePlantingRegion}}" class="secondary planting-location-action {{locatingPlantingRegion?'sheet-disabled':''}}" bindtap="detectPlantingLocation" disabled="{{locatingPlantingRegion}}">{{locatingPlantingRegion?'正在获取位置…':'使用当前位置'}}</button>
+      </view>
+      <view wx:elif="{{sheet==='gardenEnvironment'}}">
+        <view class="garden-environment-options">
+          <button wx:for="{{environments}}" wx:key="*this" class="garden-environment-option {{gardenEnvironmentDraft===item?'selected':''}}" data-value="{{item}}" bindtap="chooseGardenEnvironment">{{item}}</button>
+        </view>
+        <button class="primary sheet-confirm" bindtap="saveGardenEnvironment">保存</button>
+      </view>
+      <view wx:elif="{{sheet==='photoCorrection'}}" class="photo-correction-form">
+        <view class="body-copy">为「{{selectedPlant.name}}」提交一张实拍照。审核后才能用于图鉴。</view>
+        <canvas canvas-id="correction-photo-canvas" class="photo-encoding-canvas" aria-hidden="true"></canvas>
+        <button class="photo-correction-picker" disabled="{{photoCorrectionPreparing || photoCorrectionSending}}" bindtap="chooseCorrectionPhoto">
+          <image wx:if="{{photoCorrectionPreview}}" src="{{photoCorrectionPreview}}" mode="aspectFit"/>
+          <text>{{photoCorrectionPreparing?'正在处理照片…':photoCorrectionPreview?'更换照片':'＋ 从相册选一张'}}</text>
+        </button>
+        <input class="field" maxlength="400" value="{{photoCorrectionNote}}" disabled="{{photoCorrectionSending}}" bindinput="editCorrectionNote" placeholder="可补充说明，如拍摄部位" placeholder-class="placeholder"/>
+        <button class="photo-authorization" disabled="{{photoCorrectionSending}}" bindtap="toggleCorrectionAuthorization">
+          <view class="photo-authorization-mark {{photoCorrectionAuthorized?'checked':''}}">{{photoCorrectionAuthorized?'✓':''}}</view>
+          <text>照片由我拍摄或已获授权，同意用于图鉴。</text>
+        </button>
+        <view wx:if="{{photoCorrectionError}}" class="form-error">{{photoCorrectionError}}</view>
+        <button class="primary sheet-confirm {{!photoCorrectionPreview || !photoCorrectionAuthorized || photoCorrectionPreparing || photoCorrectionSending?'sheet-disabled':''}}" disabled="{{!photoCorrectionPreview || !photoCorrectionAuthorized || photoCorrectionPreparing || photoCorrectionSending}}" bindtap="submitPhotoCorrection">{{photoCorrectionSending?'正在提交…':'提交审核'}}</button>
+      </view>
+      <view wx:elif="{{sheet==='confirm'}}">
+        <view class="discard-copy">{{confirmation.body}}</view>
+        <view class="sheet-actions"><button wx:if="{{confirmation.canCancel}}" class="secondary" bindtap="closeSheet">取消</button><button class="primary {{confirmation.danger?'danger':''}}" bindtap="confirmSheet">{{confirmation.label}}</button></view>
+      </view>
+      <view wx:elif="{{sheet==='photoSource'}}" class="custom-options">
+        <button class="custom-option" data-source="camera" bindtap="selectPhotoSource"><text>拍照</text><text>›</text></button>
+        <button class="custom-option" data-source="album" bindtap="selectPhotoSource"><text>从相册选择</text><text>›</text></button>
+      </view>
+      <view wx:elif="{{sheet==='photoPreview'}}">
+        <swiper class="photo-viewer" current="{{photoIndex}}" bindchange="changePreviewPhoto">
+          <swiper-item wx:for="{{photoPreview}}" wx:key="*this"><image class="viewer-photo" src="{{item}}" mode="aspectFit"/></swiper-item>
+        </swiper>
+        <view class="photo-viewer-count" wx:if="{{photoPreview.length>1}}">{{photoIndex+1}} / {{photoPreview.length}}</view>
+      </view>
+      <view wx:elif="{{sheet==='environment'}}"><view class="choice-grid"><button wx:for="{{environments}}" wx:key="*this" class="environment-choice {{environment===item?'selected':''}}" data-field="environment" data-value="{{item}}" bindtap="chooseSetting">{{item}}</button></view><text class="field-label light-label">光照</text><view class="pills"><button wx:for="{{lights}}" wx:key="*this" class="pill {{light===item?'selected':''}}" data-field="light" data-value="{{item}}" bindtap="chooseSetting">{{item}}</button></view><button class="primary sheet-confirm" bindtap="closeSheet">完成</button></view><view wx:elif="{{sheet==='season'}}" class="choice-grid"><button wx:for="{{seasons}}" wx:key="*this" class="pill {{season===item?'selected':''}}" data-field="season" data-value="{{item}}" bindtap="chooseSetting">{{item}}</button></view><view wx:elif="{{sheet==='recordPlant'}}" class="custom-options"><button wx:for="{{plantOptions}}" wx:key="*this" class="custom-option {{recordPlantIndex===index?'selected':''}}" data-index="{{index}}" bindtap="selectRecordPlant"><text>{{item}}</text><text>{{recordPlantIndex===index?'✓':'›'}}</text></button></view><view wx:elif="{{sheet==='date'}}" class="date-sheet"><view class="date-preview">{{dateYear}} 年 {{dateMonth}} 月 {{dateDay}} 日</view><view class="date-columns"><view class="date-column"><text class="date-column-title">年</text><scroll-view scroll-y class="date-scroll"><button wx:for="{{dateYears}}" wx:key="*this" class="date-cell {{dateYear===item?'selected':''}}" data-field="Year" data-value="{{item}}" bindtap="chooseDatePart">{{item}}</button></scroll-view></view><view class="date-column"><text class="date-column-title">月</text><scroll-view scroll-y class="date-scroll"><button wx:for="{{dateMonths}}" wx:key="*this" class="date-cell {{dateMonth===item?'selected':''}}" data-field="Month" data-value="{{item}}" bindtap="chooseDatePart">{{item}}</button></scroll-view></view><view class="date-column"><text class="date-column-title">日</text><scroll-view scroll-y class="date-scroll"><button wx:for="{{dateDays}}" wx:key="*this" wx:if="{{item<=dateLimit}}" class="date-cell {{dateDay===item?'selected':''}}" data-field="Day" data-value="{{item}}" bindtap="chooseDatePart">{{item}}</button></scroll-view></view></view><text wx:if="{{dateError}}" class="form-error">{{dateError}}</text><button class="primary sheet-confirm" bindtap="saveDate">确认日期</button></view><view wx:elif="{{sheet==='discardRecord'||sheet==='discardPlant'}}"><view class="discard-copy">{{sheet==='discardRecord'?'这次记录还没有保存，离开后文字和照片选择会清空。':'这株植物还没有保存到田地，离开后编辑内容会清空。'}}</view><view class="discard-actions"><button class="secondary" bindtap="closeSheet">继续编辑</button><button class="primary" bindtap="confirmDiscard">放弃编辑</button></view></view>
+    </view>
+  </view>
+  <view wx:if="{{toastText}}" class="app-toast" aria-role="status">{{toastText}}</view>
+</view>

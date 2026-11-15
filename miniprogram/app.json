@@ -1,0 +1,17 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/inner/index",
+    "pages/inner/night"
+  ],
+  "window": {
+    "navigationStyle": "custom",
+    "navigationBarTitleText": "朝暮田事",
+    "backgroundColor": "#F8F5EB",
+    "backgroundColorContent": "#F8F5EB",
+    "backgroundTextStyle": "dark"
+  },
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents",
+  "sitemapLocation": "sitemap.json"
+}

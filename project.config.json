@@ -1,0 +1,31 @@
+{
+  "setting": {
+    "es6": true,
+    "postcss": true,
+    "minified": true,
+    "uglifyFileName": false,
+    "enhance": true,
+    "packNpmRelationList": [],
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    },
+    "useCompilerPlugins": false
+  },
+  "compileType": "miniprogram",
+  "simulatorPluginLibVersion": {},
+  "packOptions": {
+    "ignore": [],
+    "include": [
+      { "type": "file", "value": "assets/photo-chayote.jpg" },
+      { "type": "file", "value": "assets/photo-guava.jpg" },
+      { "type": "file", "value": "assets/photo-papaya.jpg" },
+      { "type": "folder", "value": "assets/catalog-photos" }
+    ]
+  },
+  "appid": "wx66815bf64726c6c7",
+  "editorSetting": {},
+  "miniprogramRoot": "miniprogram/",
+  "projectname": "朝暮田事"
+}

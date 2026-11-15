@@ -1,0 +1,10 @@
+{
+  "navigationStyle": "custom",
+  "disableScroll": true,
+  "backgroundColor": "#1F2927",
+  "backgroundColorTop": "#1F2927",
+  "backgroundColorBottom": "#1F2927",
+  "backgroundColorContent": "#1F2927",
+  "backgroundTextStyle": "light",
+  "usingComponents": {}
+}
